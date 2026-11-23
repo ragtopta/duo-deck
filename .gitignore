@@ -1,0 +1,17 @@
+# Android Studio / Gradle files that should not go on GitHub
+.gradle/
+build/
+app/build/
+.idea/
+.kotlin/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+.DS_Store
+Thumbs.db
