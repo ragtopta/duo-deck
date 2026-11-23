@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duo-Deck User Guide</title>
+<style>
+  :root {
+    --bg: #14161c;
+    --panel: #2a2f3a;
+    --panel-hi: #3c4352;
+    --panel-lo: #171a21;
+    --display: #05080a;
+    --glow: #3cff6a;
+    --glow-dim: #1d7a35;
+    --amber: #ffb347;
+    --text: #dde3ee;
+    --muted: #9aa4b5;
+    --stripe: #ff8a3d;
+    --link: #6fd0ff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #e9ebf0;
+      --panel: #ffffff;
+      --panel-hi: #ffffff;
+      --panel-lo: #c4c9d4;
+      --display: #0c1410;
+      --text: #1d2230;
+      --muted: #535c6e;
+      --link: #0b6aa8;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--link); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+
+  /* ---- header looks like a player title bar + display */
+  header.deck {
+    background: linear-gradient(180deg, var(--panel-hi), var(--panel));
+    border: 2px solid var(--panel-lo);
+    border-radius: 6px;
+    padding: 10px 14px 18px;
+    box-shadow: inset 1px 1px 0 rgba(255,255,255,.15), 0 8px 24px rgba(0,0,0,.35);
+  }
+  .titlebar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .titlebar .stripes {
+    flex: 1; height: 9px;
+    background: repeating-linear-gradient(180deg, var(--stripe) 0 2px, transparent 2px 4px);
+    opacity: .9;
+  }
+  .titlebar b { letter-spacing: .18em; font-size: 13px; color: var(--muted); }
+  .lcd {
+    background: var(--display);
+    border: 2px inset #333;
+    border-radius: 4px;
+    padding: 14px 18px;
+    color: var(--glow);
+    font-family: "Courier New", ui-monospace, monospace;
+    text-shadow: 0 0 6px rgba(60,255,106,.55);
+  }
+  .lcd h1 { margin: 0; font-size: clamp(28px, 6vw, 44px); letter-spacing: .08em; }
+  .lcd p { margin: 4px 0 0; color: var(--glow-dim); text-shadow: none; }
+  .vu { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; margin-top: 12px; }
+  .vu span { height: 7px; border-radius: 1px; }
+
+  nav.toc {
+    margin: 22px 0;
+    background: var(--panel);
+    border: 1px solid var(--panel-lo);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  nav.toc h2 { margin: 0 0 8px; font-size: 14px; letter-spacing: .15em; color: var(--muted); }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2 240px; }
+  nav.toc li { margin: 2px 0; break-inside: avoid; }
+
+  section {
+    background: var(--panel);
+    border: 1px solid var(--panel-lo);
+    border-radius: 6px;
+    padding: 4px 20px 16px;
+    margin: 18px 0;
+  }
+  section > h2 {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 15px; letter-spacing: .18em; text-transform: uppercase;
+    margin: 14px 0 10px;
+  }
+  section > h2::before, section > h2::after {
+    content: ""; flex: 1; height: 9px;
+    background: repeating-linear-gradient(180deg, var(--stripe) 0 2px, transparent 2px 4px);
+    opacity: .8;
+  }
+  h3 { margin: 18px 0 6px; font-size: 17px; }
+  .key {
+    display: inline-block;
+    font: 600 12px/1 ui-monospace, "Courier New", monospace;
+    letter-spacing: .06em;
+    padding: 4px 7px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #f2f4f8, #c9ced8);
+    color: #222;
+    border: 1px solid #8a909c;
+    box-shadow: inset 1px 1px 0 #fff, 1px 1px 0 rgba(0,0,0,.35);
+    white-space: nowrap;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 15px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--panel-lo); vertical-align: top; }
+  th { color: var(--muted); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .tip {
+    border-left: 4px solid var(--glow);
+    background: rgba(60,255,106,.07);
+    padding: 8px 12px; margin: 12px 0; border-radius: 0 4px 4px 0;
+  }
+  .warn {
+    border-left: 4px solid var(--amber);
+    background: rgba(255,179,71,.09);
+    padding: 8px 12px; margin: 12px 0; border-radius: 0 4px 4px 0;
+  }
+  .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+  .skins div {
+    padding: 8px 10px; border-radius: 4px; font-size: 14px; font-weight: 600;
+    border: 1px solid rgba(0,0,0,.4);
+    box-shadow: inset 1px 1px 0 rgba(255,255,255,.25);
+  }
+  .skins small { display: block; font-weight: 400; opacity: .8; }
+  .diagram { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .diagram .screen {
+    border: 3px solid #555; border-radius: 8px; padding: 8px; background: var(--panel-lo);
+    min-height: 150px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .diagram .blk {
+    border-radius: 3px; padding: 5px 7px; font: 600 12px ui-monospace, monospace; letter-spacing: .08em;
+    background: var(--panel-hi); border: 1px solid var(--panel-lo);
+  }
+  .diagram .grow { flex: 1; }
+  .diagram figcaption { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
+  code { font-family: ui-monospace, "Courier New", monospace; font-size: .92em; }
+  .donate { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  .donate a { text-decoration: none; font-size: 14px; padding: 9px 14px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 30px; }
+  @media (max-width: 560px) {
+    section { padding: 4px 14px 14px; }
+    table { font-size: 14px; }
+    th, td { padding: 6px 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="deck">
+  <div class="titlebar"><div class="stripes"></div><b>DUO-DECK</b><div class="stripes"></div></div>
+  <div class="lcd">
+    <h1>DUO-DECK</h1>
+    <p>User Guide &middot; retro music player for the Microsoft Surface Duo</p>
+    <div class="vu" id="vu" aria-hidden="true"></div>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>CONTENTS</h2>
+  <ol>
+    <li><a href="#install">Installing</a></li>
+    <li><a href="#first">First launch</a></li>
+    <li><a href="#screens">Using both screens</a></li>
+    <li><a href="#player">The player panel</a></li>
+    <li><a href="#eq">Equalizer</a></li>
+    <li><a href="#vis">Visualizers &amp; VU meters</a></li>
+    <li><a href="#playlist">Playlist &amp; library</a></li>
+    <li><a href="#favorites">Favorites &amp; smart lists</a></li>
+    <li><a href="#radio">Internet radio</a></li>
+    <li><a href="#sleep">Sleep timer</a></li>
+    <li><a href="#widget">Home-screen widget</a></li>
+    <li><a href="#layout">Moving sections around</a></li>
+    <li><a href="#setup">Setup: your own startup layout</a></li>
+    <li><a href="#skins">Skins</a></li>
+    <li><a href="#studio">Skin Studio</a></li>
+    <li><a href="#perf">Performance &amp; screen</a></li>
+    <li><a href="#menu">Menu reference</a></li>
+    <li><a href="#trouble">Troubleshooting</a></li>
+    <li><a href="#support">Support Duo-Deck</a></li>
+  </ol>
+</nav>
+
+<section id="install">
+  <h2>Installing</h2>
+  <p>Duo-Deck is an Android Studio project. You don't need to write any code to install it.</p>
+  <ol>
+    <li>Download or unzip the project folder.</li>
+    <li>Open Android Studio, choose <b>File &gt; Open</b>, and pick the project folder (the one that has <code>settings.gradle.kts</code> in it).</li>
+    <li>Let Android Studio finish syncing. If it asks to download Android SDK 35 or other parts, say yes.</li>
+    <li>On the Surface Duo, turn on <b>Developer options</b> and <b>USB debugging</b>, then plug it into the computer.</li>
+    <li>Pick the Duo in the device list at the top of Android Studio and press the green <b>Run</b> button.</li>
+  </ol>
+  <p>Duo-Deck needs Android 10 or newer. It works on any Android phone, but it was built for the two screens of the Surface Duo.</p>
+</section>
+
+<section id="first">
+  <h2>First launch</h2>
+  <p>After the splash screen, Duo-Deck asks for permission to read your music. Allow it, and the app scans your phone for songs and loads them into the playlist.</p>
+  <div class="tip">If you said no by mistake, the app offers to open its settings page so you can turn on <b>Music and audio</b> (or <b>Files and media</b> on older Android). When you come back, Duo-Deck checks again on its own.</div>
+  <p>You can also add songs by hand: press the <span class="key">&#9167;</span> eject button on the player, or <span class="key">ADD</span> in the playlist, and pick audio files.</p>
+</section>
+
+<section id="screens">
+  <h2>Using both screens</h2>
+  <p>Drag the app across both screens to span it. Duo-Deck puts sections on each screen based on how the Duo is folded.</p>
+  <figure class="diagram">
+    <div class="screen"><div class="blk">PLAYER</div><div class="blk">EQUALIZER</div><div class="blk grow">VISUALIZATION</div></div>
+    <div class="screen"><div class="blk grow">PLAYLIST</div></div>
+    <figcaption>Default layout when spanned. Flat or like a book: side by side. Fold one screen up like a laptop: player on top, playlist below.</figcaption>
+  </figure>
+  <table>
+    <tr><th>Posture</th><th>What happens</th></tr>
+    <tr><td>Flat / book</td><td>Two screens side by side.</td></tr>
+    <tr><td>Laptop (one screen raised)</td><td>Switches to top and bottom right away. The hinge sensor detects it, so you don't need to tilt the phone.</td></tr>
+    <tr><td>One screen only</td><td>Everything is stacked on one screen.</td></tr>
+  </table>
+  <p>Press <span class="key">SWAP</span> (next to <span class="key">SHUFFLE</span>) to flip what's on the two screens.</p>
+  <div class="warn">If laptop mode ever shows up upside down, open the menu and choose <b>Flip laptop view (upside down?)</b>. Duo-Deck remembers the choice.</div>
+</section>
+
+<section id="player">
+  <h2>The player panel</h2>
+  <h3>Display</h3>
+  <ul>
+    <li><b>Clock:</b> tap it to switch between time played and time remaining.</li>
+    <li><b>VU meters:</b> left and right level bars under the clock. See <a href="#vis">Visualizers</a>.</li>
+    <li><b>Song title:</b> scrolls when it's too long to fit. For internet radio it shows the station and, when the station sends it, the song that&rsquo;s on.</li>
+    <li><b>KBPS / KHZ</b> and <b>MONO / STEREO</b>: details about the current song.</li>
+  </ul>
+  <h3>Sliders</h3>
+  <ul>
+    <li><b>Seek bar</b> (under the display): drag to jump anywhere in the song.</li>
+    <li><b>Volume</b> (the long slider) and <b>Balance</b> (the short one; the middle is centered).</li>
+  </ul>
+  <h3>Buttons</h3>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><span class="key">&#9198;</span></td><td>Previous song</td></tr>
+    <tr><td><span class="key">&#9654;</span></td><td>Play</td></tr>
+    <tr><td><span class="key">&#10074;&#10074;</span></td><td>Pause / resume</td></tr>
+    <tr><td><span class="key">&#9632;</span></td><td>Stop</td></tr>
+    <tr><td><span class="key">&#9197;</span></td><td>Next song</td></tr>
+    <tr><td><span class="key">&#9167;</span></td><td>Add song files</td></tr>
+    <tr><td><span class="key">EQ</span></td><td>Show or hide the equalizer</td></tr>
+    <tr><td><span class="key">PL</span></td><td>Show or hide the playlist</td></tr>
+    <tr><td><span class="key">FAV</span></td><td>Add the playing song to Favorites (lit when it is one). Tap again to remove it.</td></tr>
+    <tr><td><span class="key">SWAP</span></td><td>Swap the two screens</td></tr>
+    <tr><td><span class="key">SHUFFLE</span></td><td>Play in random order (lit when on)</td></tr>
+    <tr><td><span class="key">REP</span></td><td>Repeat: off &rarr; repeat all &rarr; repeat one (<b>REP 1</b>)</td></tr>
+  </table>
+  <p>Music keeps playing when you leave the app or turn off the screen. You can control it from the notification and the lock screen.</p>
+</section>
+
+<section id="eq">
+  <h2>Equalizer</h2>
+  <p>The equalizer is a 10-band EQ with a preamp. The bands are 60, 170, 310, 600, 1K, 3K, 6K, 12K, 14K and 16K Hz.</p>
+  <ul>
+    <li><span class="key">ON</span> turns the EQ on or off.</li>
+    <li><b>PRE</b> is the preamp. Lower it if boosted bands sound distorted.</li>
+    <li>Drag a band up to boost it or down to cut it (+12 to &minus;12 dB). The line along the top shows the overall curve.</li>
+    <li>Each slider knob has a lit line across it in the skin&rsquo;s main color (for example the blue of the display on a blue skin, or the green text on a dark skin), so you can spot every band at a glance. The lines dim when the EQ is off.</li>
+    <li><span class="key">PRESETS</span> offers Flat, Rock, Pop, Dance, Jazz, Classical, Bass Boost, Treble Boost, Vocal, Loudness, Shop Floor and Headphones.</li>
+  </ul>
+  <div class="tip"><b>Shop Floor</b> is tuned to cut through background noise. <b>Headphones</b> is a gentle curve for earbuds.</div>
+</section>
+
+<section id="vis">
+  <h2>Visualizers &amp; VU meters</h2>
+  <h3>VU meters</h3>
+  <p>The two bars under the clock show the loudness of the left (<b>L</b>) and right (<b>R</b>) channels, like an old tape deck. They fill from left to right using the skin's colors and get warmer toward the red end, moving with the music so the two sides bounce a little differently. Turn them off in <a href="#perf">Performance &amp; screen</a> if you prefer a cleaner display.</p>
+  <h3>Visualizer panels</h3>
+  <p>The Visualization section shows the music's frequencies live. If a whole screen is empty, for example because you hid the playlist, a large visualizer fills it. You can turn that off in <a href="#setup">Setup</a>.</p>
+  <p><b>Tap a visualizer to change its style.</b> Each one remembers its own style:</p>
+  <table>
+    <tr><th>Style</th><th>Look</th></tr>
+    <tr><td>LED bars</td><td>Segmented bars like a hi-fi display</td></tr>
+    <tr><td>Bars + peaks</td><td>LED bars with a white cap that sits on top of each bar, then drops back down one block at a time</td></tr>
+    <tr><td>Solid bars</td><td>Smooth filled bars</td></tr>
+    <tr><td>Mirror</td><td>Bars that grow up and down from the middle</td></tr>
+    <tr><td>Oscilloscope</td><td>The sound wave as a moving line</td></tr>
+    <tr><td>Peak dots</td><td>Floating dots only</td></tr>
+  </table>
+  <p>The visualizers and meters stop when the music stops, so they don't use battery while idle.</p>
+</section>
+
+<section id="playlist">
+  <h2>Playlist &amp; library</h2>
+  <p>The tabs along the top switch views:</p>
+  <table>
+    <tr><th>Tab</th><th>Shows</th></tr>
+    <tr><td><span class="key">NOW PLAYING</span></td><td>The current play queue. The playing song is highlighted.</td></tr>
+    <tr><td><span class="key">ARTISTS</span></td><td>Your music grouped by artist. Tap one to see its songs.</td></tr>
+    <tr><td><span class="key">ALBUMS</span></td><td>Your music grouped by album.</td></tr>
+    <tr><td><span class="key">SONGS</span></td><td>Every song on the phone.</td></tr>
+    <tr><td><span class="key">FOLDERS</span></td><td>Your music grouped by the folder it&rsquo;s stored in, like <code>Music/Rock</code>. Tap a folder to see its songs.</td></tr>
+    <tr><td><span class="key">PLAYLISTS</span></td><td>Automatic lists (Favorites, Most Played, Recently Played, Recently Added), then playlists you've saved. <span class="key">NEW LIST</span> makes one.</td></tr>
+    <tr><td><span class="key">RADIO</span></td><td>Free internet radio stations from around the world. See <a href="#radio">Internet radio</a>.</td></tr>
+  </table>
+  <h3>Tap and hold a song</h3>
+  <p>Tap a song to play it. Tap and hold it for more options: <b>Play now</b>, <b>Play next</b>, <b>Add to queue</b>, <b>Add to playlist...</b>, <b>Add to favorites</b>, and <b>Remove</b> from the queue or playlist.</p>
+  <p>When you open an artist, album or playlist, <span class="key">PLAY ALL</span> plays every song in it, <span class="key">+ QUEUE</span> adds them all to the queue, and <span class="key">&lt; BACK</span> returns to the list.</p>
+  <h3>Buttons along the bottom (Now Playing)</h3>
+  <table>
+    <tr><td><span class="key">ADD</span></td><td>Add song files</td></tr>
+    <tr><td><span class="key">SORT</span></td><td>Sort the queue by artist, title, album, or randomly. Each press moves to the next one, and the playing song keeps playing.</td></tr>
+    <tr><td><span class="key">NOW</span></td><td>Scroll to the song that's playing</td></tr>
+    <tr><td><span class="key">SAVE</span></td><td>Save the queue as a named playlist</td></tr>
+    <tr><td><span class="key">CLEAR</span></td><td>Empty the queue</td></tr>
+  </table>
+  <p>The box beside them shows the song count and the total playing time.</p>
+</section>
+
+<section id="favorites">
+  <h2>Favorites &amp; smart lists</h2>
+  <p>Mark songs you love by pressing <span class="key">FAV</span> on the player while they play, or by long-pressing any song, artist, album or folder and choosing <b>Add to favorites</b>.</p>
+  <p>The <span class="key">PLAYLISTS</span> tab starts with four lists that keep themselves up to date:</p>
+  <table>
+    <tr><th>List</th><th>What&rsquo;s in it</th></tr>
+    <tr><td>* FAVORITES</td><td>Every song you&rsquo;ve marked, A to Z.</td></tr>
+    <tr><td>* MOST PLAYED</td><td>Your top 50 songs by number of plays.</td></tr>
+    <tr><td>* RECENTLY PLAYED</td><td>The last 50 songs you played, newest first.</td></tr>
+    <tr><td>* RECENTLY ADDED</td><td>The 50 newest songs on your phone.</td></tr>
+  </table>
+  <p>Open one to play it all, add it to the queue, or long-press a song in it. Plays are counted when a song starts, including when the screen is off.</p>
+</section>
+
+<section id="radio">
+  <h2>Internet radio</h2>
+  <p>The <span class="key">RADIO</span> tab in the playlist plays thousands of free stations. They come from <b>Radio Browser</b> (radio-browser.info), a free, community-run directory. You don&rsquo;t need an account or a sign-up. You do need Wi&#8209;Fi or mobile data.</p>
+  <table>
+    <tr><th>Button</th><th>Shows</th></tr>
+    <tr><td><span class="key">MY STATIONS</span></td><td>Stations you&rsquo;ve saved. The tab opens here once you have some.</td></tr>
+    <tr><td><span class="key">POPULAR</span></td><td>The most-played stations worldwide.</td></tr>
+    <tr><td><span class="key">NEAR ME</span></td><td>Popular stations in your country, based on the phone&rsquo;s region setting.</td></tr>
+    <tr><td><span class="key">GENRES</span></td><td>Pick a style, like rock, country, jazz, 80s, news or talk.</td></tr>
+    <tr><td><span class="key">SEARCH</span></td><td>Type part of a station&rsquo;s name and tap <span class="key">GO</span>.</td></tr>
+  </table>
+  <ul>
+    <li>Tap a station to play it. The player&rsquo;s <span class="key">NEXT</span> and <span class="key">PREV</span> buttons move through the stations in the list you played from.</li>
+    <li>On the right of each row you&rsquo;ll see the station&rsquo;s country, quality (for example <b>128K</b>) and format.</li>
+    <li>Press and hold a station for <b>Save to my stations</b> or <b>Add to queue</b>. Saved stations have a <b>*</b> beside them.</li>
+    <li>While a station plays, <span class="key">SAVE</span> at the bottom saves it.</li>
+    <li><span class="key">SLEEP</span> at the bottom of the RADIO tab is a quick sleep timer for falling asleep to the radio. Each tap steps through 15, 30, 45, 60 and 90 minutes, then off. The time left shows on the player display, and the station fades out and stops when it runs out.</li>
+    <li>Many stations send the name of the song that&rsquo;s on. When they do, it shows on the player display, on the notification and on the widget. Other stations just show <b>LIVE</b>.</li>
+    <li>The equalizer, visualizers, VU meters and sleep timer all work with radio. You can&rsquo;t rewind live radio, and <b>End of this song</b> doesn&rsquo;t apply to it.</li>
+  </ul>
+  <p>Radio uses data. A 128K station uses about 60&nbsp;MB an hour, so on mobile data you may want to stick to Wi&#8209;Fi.</p>
+</section>
+
+<section id="sleep">
+  <h2>Sleep timer</h2>
+  <p><b>Menu &gt; Sleep timer</b> stops the music for you.</p>
+  <ul>
+    <li>Pick <b>15, 30, 45, 60 or 90</b> minutes, or <span class="key">END OF THIS SONG</span>.</li>
+    <li>The music fades out over the last 10 seconds, then pauses. It works with the screen off.</li>
+    <li>While it runs, the display shows <b>SLEEP</b> and the time left.</li>
+    <li><span class="key">TURN OFF</span> cancels it.</li>
+  </ul>
+</section>
+
+<section id="widget">
+  <h2>Home-screen widget</h2>
+  <p>Put a mini Duo-Deck on your home screen. It shows the song that&rsquo;s playing and has previous, play/pause and next buttons, all drawn in your current skin&rsquo;s colors.</p>
+  <ol>
+    <li>Press and hold an empty spot on your home screen and choose <b>Widgets</b>.</li>
+    <li>Find <b>Duo-Deck</b>, then press and hold the widget and drag it onto your home screen.</li>
+    <li>Press and hold it again to resize it if you like.</li>
+  </ol>
+  <p>Tap the song display to open the app. When you change skins in the app, the widget changes to match. Play on the widget picks up where you left off, even after the app was closed.</p>
+</section>
+
+<section id="layout">
+  <h2>Moving sections around</h2>
+  <p>You can arrange the four sections (Player, Equalizer, Visualization, Playlist) any way you like, on either screen.</p>
+  <ol>
+    <li><b>Tap and hold</b> a section's title bar (the striped bar with its name).</li>
+    <li><b>Drag</b> it. A glowing line shows where it will snap in, even on the other screen.</li>
+    <li><b>Let go</b> to drop it there.</li>
+  </ol>
+  <p>The layout is the same in every skin. <b>Menu &gt; Reset layout</b> puts everything back to how it was at first.</p>
+</section>
+
+<section id="setup">
+  <h2>Setup: your own startup layout</h2>
+  <p>Open <b>Menu &gt; Setup (my layout)</b> to make Duo-Deck always open the way you like it.</p>
+  <ol>
+    <li>Arrange the screen: drag the sections where you want them and tap the visualizers to choose their styles.</li>
+    <li>Under <b>Show</b>, turn the <b>Equalizer</b>, <b>Playlist</b> and <b>Big visualizer on an empty screen</b> on or off.</li>
+    <li>Press <span class="key">SAVE AS MY SETUP</span>.</li>
+    <li>Under <b>When Duo-Deck opens</b>, choose:
+      <ul>
+        <li><span class="key">MY SETUP</span> to always open in your saved setup, even if you moved things around last time.</li>
+        <li><span class="key">AS I LEFT IT</span> to open the way you last had it.</li>
+      </ul>
+    </li>
+  </ol>
+  <p><span class="key">LOAD IT NOW</span> brings your saved setup back right away. <span class="key">FACTORY LAYOUT</span> returns to the original layout and keeps your saved setup.</p>
+  <div class="tip">Your setup applies to every skin, so you can change skins as often as you like and the layout stays the same.</div>
+</section>
+
+<section id="skins">
+  <h2>Skins</h2>
+  <p>Open <b>Menu &gt; Choose skin</b> and tap a skin to use it. Duo-Deck comes with 17:</p>
+  <div class="skins">
+    <div style="background:#2b2f3a;color:#3cff6a">Night Shift<small>dark steel, green glow</small></div>
+    <div style="background:#e9ecf3;color:#1e2492">Porcelain<small>clean white and blue</small></div>
+    <div style="background:#3a2a1c;color:#ff9a3c">Foundry<small>hot metal orange</small></div>
+    <div style="background:#1a1a1a;color:#ffd60a">Hi-Vis<small>safety yellow</small></div>
+    <div style="background:#1b0e33;color:#ff5fd2">Neon Drive<small>synthwave purple and pink</small></div>
+    <div style="background:#0a140c;color:#5cff7e">Green Screen<small>old terminal</small></div>
+    <div style="background:#ffc6e0;color:#3a1f3f">Bubblegum<small>pastel pink and mint</small></div>
+    <div style="background:#9aa3ad;color:#b0141a">Chrome Cruiser<small>polished chrome</small></div>
+    <div style="background:#cfe9f5;color:#0f4a66">Ice Blue<small>frosty blue</small></div>
+    <div style="background:#5a3a20;color:#ffd27a">Woodgrain Hi-Fi<small>70s wood stereo</small></div>
+    <div style="background:#2f3324;color:#9dff7a">Night Ops<small>military olive</small></div>
+    <div style="background:#2a0d08;color:#ffd23a">Lava Flow<small>red and orange heat</small></div>
+    <div style="background:#0c1426;color:#2fe8a0">Aurora Night<small>northern lights</small></div>
+    <div style="background:#1c1608;color:#fff0a0">Gold Record<small>black and gold</small></div>
+    <div style="background:#3b2a18;color:#ff8c1a">Timberline<small>cabin timber</small></div>
+    <div style="background:#120a24;color:#2bf0ff">Arcade Cabinet<small>arcade neon</small></div>
+    <div style="background:#6d7178;color:#f2f230">Diamond Plate<small>tread-plate steel</small></div>
+  </div>
+  <p>In the skin list you can also edit your own skins, or delete them after a confirmation. The built-in skins can't be deleted.</p>
+</section>
+
+<section id="studio">
+  <h2>Skin Studio</h2>
+  <p>Open <b>Menu &gt; Skin Studio</b> to build your own skin. The preview updates as you make changes.</p>
+  <table>
+    <tr><th>Tab</th><th>What you can do</th></tr>
+    <tr><td><b>QUICK START</b></td><td>Start from any existing skin. Or pick two colors (a panel color and a glow color), press <span class="key">GENERATE COLOURS</span>, and Duo-Deck works out the rest.</td></tr>
+    <tr><td><b>COLOURS</b></td><td>Change any single color: panels, highlights, shadows, title bars, display, buttons, lights, sliders and playlist.</td></tr>
+    <tr><td><b>SHAPES &amp; FONT</b></td><td>Button shape (Square, Rounded, Pill, Cut corner), corner size, 3D bevel depth, shine (for metal and gloss), the title-bar style (Stripes, Solid bar, Plain) and the font (Pixel, Terminal, Mono, Sans, Serif).</td></tr>
+    <tr><td><b>TEXTURE &amp; PICTURE</b></td><td>Panel texture (Brushed metal, Scanlines, Dots, Checker, Gradient, Hazard stripes, Carbon) and its strength. You can also use <b>any photo</b> as the panel background and set how strong it shows.</td></tr>
+    <tr><td><b>VISUALIZER</b></td><td>The default visualizer style and its colors (background, low bars, high bars, peaks). The VU meters use these colors too.</td></tr>
+    <tr><td><b>SAVE &amp; SHARE</b></td><td>Name the skin, then <span class="key">SAVE &amp; USE</span> or <span class="key">SAVE AS COPY</span>. <span class="key">SHARE SKIN FILE</span> sends the skin as one small <code>.duodeck.json</code> file (the picture is included). <span class="key">IMPORT SKIN FILE</span> opens a skin someone sent you.</td></tr>
+  </table>
+  <div class="tip">If you leave the Studio with unsaved changes, Duo-Deck asks whether to keep or discard them.</div>
+</section>
+
+<section id="perf">
+  <h2>Performance &amp; screen</h2>
+  <p><b>Menu &gt; Performance &amp; screen</b> controls how hard the app works.</p>
+  <table>
+    <tr><th>Setting</th><th>Choices</th></tr>
+    <tr><td>Visualizer speed</td><td><b>60</b>, <b>30</b> (default), <b>15</b> redraws per second, or <b>OFF</b>. OFF also stops the sound analysis completely.</td></tr>
+    <tr><td>Keep screen on while playing</td><td><b>NEVER</b>, <b>PLUGGED IN</b> (only while charging), <b>ALWAYS</b> (default)</td></tr>
+    <tr><td>VU meters under the clock</td><td>On / off</td></tr>
+    <tr><td>Scrolling song title</td><td>On / off</td></tr>
+    <tr><td>Panel textures</td><td>On / off. This doesn't change your saved skins.</td></tr>
+    <tr><td>Shine and gloss effects</td><td>On / off</td></tr>
+  </table>
+  <p>Shortcut buttons: <span class="key">BEST LOOK</span> turns everything on at full speed. <span class="key">BATTERY SAVER</span> slows the visualizer to 15 and turns off the meters, scrolling title and textures.</p>
+  <p>These are always on: visualizers stop when the music stops, sound analysis pauses while Duo-Deck is off screen (the music keeps playing), and only the clock and seek bar update while a song plays.</p>
+</section>
+
+<section id="menu">
+  <h2>Menu reference</h2>
+  <p>The menu button is the small button at the top left of the player panel.</p>
+  <table>
+    <tr><td><b>Skin Studio</b></td><td>Build or edit a skin</td></tr>
+    <tr><td><b>Choose skin</b></td><td>Pick, edit or delete skins</td></tr>
+    <tr><td><b>Add song files</b></td><td>Add audio files by hand</td></tr>
+    <tr><td><b>Rescan music library</b></td><td>Look for new music on the phone</td></tr>
+    <tr><td><b>Show / Hide equalizer</b></td><td>Same as the EQ button</td></tr>
+    <tr><td><b>Sleep timer</b></td><td>Stop the music after a set time. See <a href="#sleep">Sleep timer</a>.</td></tr>
+    <tr><td><b>Setup (my layout)</b></td><td>Your startup layout. See <a href="#setup">Setup</a>.</td></tr>
+    <tr><td><b>Performance &amp; screen</b></td><td>Speed, battery and keep-screen-on settings</td></tr>
+    <tr><td><b>Flip laptop view</b></td><td>Only appears in laptop mode. Turns the view the right way up.</td></tr>
+    <tr><td><b>Reset layout</b></td><td>Puts the sections and visualizer styles back to the original</td></tr>
+    <tr><td><b>About Duo-Deck</b></td><td>Version, quick tips, and donation links</td></tr>
+  </table>
+</section>
+
+<section id="trouble">
+  <h2>Troubleshooting</h2>
+  <h3>No songs show up</h3>
+  <p>Check that Duo-Deck has permission to read music (Android Settings &gt; Apps &gt; Duo-Deck &gt; Permissions), then choose <b>Menu &gt; Rescan music library</b>. Or add files with <span class="key">ADD</span>.</p>
+  <h3>Laptop view is upside down</h3>
+  <p>Choose <b>Menu &gt; Flip laptop view (upside down?)</b>.</p>
+  <h3>The screen goes dark while music plays</h3>
+  <p>In <b>Performance &amp; screen</b>, make sure <b>Keep screen on</b> is set to ALWAYS (the default) or PLUGGED IN.</p>
+  <h3>Everything feels slow, or the battery drains fast</h3>
+  <p>Press <span class="key">BATTERY SAVER</span> in Performance &amp; screen, or set the visualizer speed to 15 or OFF.</p>
+  <h3>A radio station won&rsquo;t play</h3>
+  <p>Stations go offline now and then. If the bottom of the RADIO tab says <b>STATION ERROR</b>, try another station. If no stations load at all, check your internet connection and tap the message to try again.</p>
+  <h3>A section disappeared</h3>
+  <p>The equalizer and playlist can be hidden. Turn them back on with <span class="key">EQ</span> / <span class="key">PL</span>, in <b>Setup</b>, or with <b>Menu &gt; Reset layout</b>.</p>
+  <h3>The layout keeps going back after I move things</h3>
+  <p>Setup is set to <b>MY SETUP</b>, which restores your saved layout each time the app opens. Either save your new layout with <span class="key">SAVE AS MY SETUP</span> or switch to <b>AS I LEFT IT</b>.</p>
+</section>
+
+<section id="support">
+  <h2>Support Duo-Deck</h2>
+  <p>Duo-Deck is free. If you enjoy it and want to buy the maker a coffee, it's much appreciated. It's completely optional.</p>
+  <div class="donate">
+    <a class="key" href="https://cash.app/$Iamdoubled">CASH APP &nbsp;$Iamdoubled</a>
+    <a class="key" href="https://venmo.com/u/Iamdoubled">VENMO &nbsp;@Iamdoubled</a>
+  </div>
+  <p>You'll find the same buttons in the app under <b>Menu &gt; About Duo-Deck</b>.</p>
+</section>
+
+<footer>
+  Duo-Deck &middot; an original retro-style player. Fonts: VT323 and Silkscreen (SIL Open Font License, see the <code>licenses</code> folder).
+</footer>
+</div>
+
+<script>
+  // little animated VU strip in the header
+  (function () {
+    var vu = document.getElementById('vu'); if (!vu) return;
+    var n = 30, cells = [];
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement('span');
+      var f = i / (n - 1);
+      s.dataset.c = f < 0.6 ? '#3cff6a' : f < 0.82 ? '#f2e24a' : '#ff3a2a';
+      vu.appendChild(s); cells.push(s);
+    }
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var lvl = 0.6;
+    function draw() {
+      var t = Date.now() / 1000;
+      var target = 0.55 + 0.3 * Math.sin(t * 5.3) * Math.sin(t * 1.7) + (Math.random() - 0.5) * 0.12;
+      lvl = target > lvl ? target : lvl - 0.04;
+      var lit = Math.round(Math.max(0, Math.min(1, lvl)) * n);
+      for (var i = 0; i < n; i++) {
+        cells[i].style.background = cells[i].dataset.c;
+        cells[i].style.opacity = i < lit ? '1' : '0.15';
+      }
+    }
+    draw();
+    if (!reduce) setInterval(draw, 70);
+  })();
+</script>
+</body>
+</html>
