@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duo-Deck Stats</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#1c2233; --hi:#3a4466; --lo:#080a10; --screen:#04120a;
+    --text:#d8dcea; --dim:#7b84a3; --led:#3dff6e; --ledDim:#17401f; --amber:#ffb21e; --accent:#2fa8ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+  .wrap{max-width:900px;margin:0 auto}
+  .panel{background:var(--panel);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);border-radius:6px;padding:14px;margin-bottom:16px;box-shadow:0 6px 20px #0008}
+  .title{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .title .stripe{flex:1;height:10px;background:repeating-linear-gradient(to bottom,var(--amber) 0 2px,transparent 2px 4px)}
+  .title h1,.title h2{margin:0;font:700 15px/1 "Consolas",monospace;letter-spacing:2px;text-transform:uppercase;white-space:nowrap}
+  .screen{background:var(--screen);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);border-radius:4px;padding:16px;font-family:"Consolas","Courier New",monospace}
+  .big{font-size:64px;font-weight:700;color:var(--led);text-shadow:0 0 12px #3dff6e88;line-height:1}
+  .lbl{color:var(--dim);font-size:12px;letter-spacing:2px;text-transform:uppercase}
+  .delta{color:var(--amber);font-size:14px;margin-top:6px;min-height:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:12px}
+  .tile{background:var(--screen);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);border-radius:4px;padding:10px 12px;font-family:"Consolas",monospace}
+  .tile .n{font-size:28px;font-weight:700;color:var(--led)}
+  table{width:100%;border-collapse:collapse;font-family:"Consolas",monospace;font-size:14px}
+  th{text-align:left;color:var(--dim);font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--hi)}
+  td{padding:8px;border-bottom:1px solid #ffffff10;vertical-align:top}
+  td.num{text-align:right;color:var(--led);font-weight:700}
+  .bar{height:8px;background:var(--ledDim);border-radius:2px;margin-top:6px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--led),var(--amber))}
+  a{color:var(--accent)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  button{font:700 13px "Consolas",monospace;letter-spacing:1px;color:#1e202b;background:linear-gradient(#e2e4ee,#a9adbf);border:2px solid;border-color:#fff #555 #555 #fff;border-radius:4px;padding:8px 14px;cursor:pointer}
+  button:active{border-color:#555 #fff #fff #555}
+  .muted{color:var(--dim);font-size:13px}
+  .err{color:#ff6b6b}
+  canvas{width:100%;height:160px;display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="panel">
+    <div class="title"><div class="stripe"></div><h1>Duo-Deck Stats</h1><div class="stripe"></div></div>
+    <div class="screen">
+      <div class="lbl">Total app downloads</div>
+      <div class="big" id="total">----</div>
+      <div class="delta" id="delta"></div>
+    </div>
+    <div class="grid">
+      <div class="tile"><div class="lbl">Stars</div><div class="n" id="stars">-</div></div>
+      <div class="tile"><div class="lbl">Forks</div><div class="n" id="forks">-</div></div>
+      <div class="tile"><div class="lbl">Watchers</div><div class="n" id="watch">-</div></div>
+      <div class="tile"><div class="lbl">Open issues</div><div class="n" id="issues">-</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="title"><div class="stripe"></div><h2>Downloads by release</h2><div class="stripe"></div></div>
+    <div class="screen" style="padding:6px 8px">
+      <table><thead><tr><th>Release / file</th><th style="text-align:right">Downloads</th></tr></thead><tbody id="rows"><tr><td class="muted">Loading...</td><td></td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="title"><div class="stripe"></div><h2>Your check-ins</h2><div class="stripe"></div></div>
+    <div class="screen"><canvas id="chart" width="860" height="160"></canvas>
+      <div class="muted" id="chartNote" style="margin-top:6px">Each time you open this page, it saves the total on this device so you can watch it grow.</div>
+    </div>
+  </div>
+
+  <div class="panel row">
+    <div class="muted" id="updated">Checking GitHub...</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="load()">REFRESH</button>
+      <button onclick="clearHistory()">CLEAR HISTORY</button>
+    </div>
+  </div>
+
+  <p class="muted" style="text-align:center">
+    <a href="https://github.com/ragtopta/duo-deck/releases">Releases</a> ·
+    <a href="https://github.com/ragtopta/duo-deck">Repo</a> ·
+    <a href="USER_GUIDE.html">User guide</a> ·
+    <a href="https://github.com/ragtopta/duo-deck/tree/main/skins">Skins</a>
+  </p>
+</div>
+
+<script>
+const REPO = "ragtopta/duo-deck";
+const KEY = "duodeck-stats-history";
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString();
+
+function getHistory(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch(e){ return []; } }
+function setHistory(h){ try { localStorage.setItem(KEY, JSON.stringify(h.slice(-200))); } catch(e){} }
+function clearHistory(){ setHistory([]); drawChart([]); $("delta").textContent = ""; }
+
+async function load(){
+  $("updated").textContent = "Checking GitHub...";
+  try {
+    const [repoRes, relRes] = await Promise.all([
+      fetch(`https://api.github.com/repos/${REPO}`),
+      fetch(`https://api.github.com/repos/${REPO}/releases?per_page=100`)
+    ]);
+    if (repoRes.status === 403 || relRes.status === 403) throw new Error("GitHub says too many checks this hour. Try again in a little while.");
+    if (!repoRes.ok || !relRes.ok) throw new Error("Couldn't reach GitHub (" + relRes.status + ").");
+    const repo = await repoRes.json();
+    const releases = await relRes.json();
+
+    $("stars").textContent = fmt(repo.stargazers_count);
+    $("forks").textContent = fmt(repo.forks_count);
+    $("watch").textContent = fmt(repo.subscribers_count ?? repo.watchers_count);
+    $("issues").textContent = fmt(repo.open_issues_count);
+
+    let total = 0, max = 1;
+    const list = releases.map(r => {
+      const assets = r.assets.filter(a => a.name.toLowerCase().endsWith(".apk"));
+      const sum = assets.reduce((s,a) => s + a.download_count, 0);
+      total += sum; max = Math.max(max, sum);
+      return { r, assets, sum };
+    });
+
+    $("rows").innerHTML = list.length ? list.map(({r,assets,sum}) => `
+      <tr><td><a href="${r.html_url}">${esc(r.name || r.tag_name)}</a>
+        <span class="muted"> · ${new Date(r.published_at).toLocaleDateString()}</span>
+        ${assets.map(a => `<div class="muted">${esc(a.name)}: ${fmt(a.download_count)}</div>`).join("")}
+        <div class="bar"><i style="width:${(sum/max*100).toFixed(1)}%"></i></div></td>
+        <td class="num">${fmt(sum)}</td></tr>`).join("")
+      : `<tr><td class="muted">No releases yet.</td><td></td></tr>`;
+
+    $("total").textContent = fmt(total);
+
+    const h = getHistory();
+    const last = h[h.length-1];
+    if (last) {
+      const d = total - last.total;
+      const when = new Date(last.t).toLocaleString();
+      $("delta").textContent = d > 0 ? `+${fmt(d)} since your last check (${when})` : `No new downloads since ${when}`;
+    } else $("delta").textContent = "First check on this device. Come back later to see it grow!";
+    if (!last || last.total !== total || Date.now() - last.t > 6*3600e3) { h.push({ t: Date.now(), total }); setHistory(h); }
+    drawChart(getHistory());
+
+    $("updated").textContent = "Updated " + new Date().toLocaleString();
+  } catch (e) {
+    $("updated").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  }
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function drawChart(h){
+  const c = $("chart"), g = c.getContext("2d");
+  const W = c.width, H = c.height;
+  g.clearRect(0,0,W,H);
+  g.strokeStyle = "#17401f"; g.lineWidth = 1;
+  for (let y = 20; y < H; y += 28) { g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke(); }
+  if (h.length < 2) { g.fillStyle = "#7b84a3"; g.font = "14px Consolas, monospace"; g.fillText("Open this page again later to start a chart.", 12, H/2); return; }
+  const min = Math.min(...h.map(p=>p.total)), max = Math.max(...h.map(p=>p.total)), span = Math.max(1, max-min);
+  const x = i => 10 + i*(W-20)/(h.length-1), y = v => H-14 - (v-min)/span*(H-34);
+  g.strokeStyle = "#3dff6e"; g.lineWidth = 3; g.shadowColor = "#3dff6e"; g.shadowBlur = 8;
+  g.beginPath(); h.forEach((p,i) => i ? g.lineTo(x(i),y(p.total)) : g.moveTo(x(i),y(p.total))); g.stroke();
+  g.shadowBlur = 0; g.fillStyle = "#ffb21e";
+  h.forEach((p,i) => { g.fillRect(x(i)-3,y(p.total)-3,6,6); });
+  g.fillStyle = "#7b84a3"; g.font = "12px Consolas, monospace";
+  g.fillText(fmt(max), 12, 14); g.fillText(fmt(min), 12, H-2);
+}
+
+load();
+</script>
+</body>
+</html>
