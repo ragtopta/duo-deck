@@ -14,7 +14,7 @@ android {
         applicationId = "com.duodeck.player"
         minSdk = 29
         targetSdk = 35
-        versionCode = 26
+        versionCode = 28
         versionName = "1.0"
     }
 

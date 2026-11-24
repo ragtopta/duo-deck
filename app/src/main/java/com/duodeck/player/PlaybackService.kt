@@ -19,6 +19,11 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.duodeck.player.audio.DspAudioProcessor
 import com.duodeck.player.data.MusicStats
 import com.duodeck.player.data.RadioNow
+import com.duodeck.player.data.StreamResolver
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.duodeck.player.widget.WidgetUpdater
 import androidx.media3.common.Player
 import android.net.Uri
@@ -63,7 +68,19 @@ class PlaybackService : MediaSessionService() {
                     .build()
             }
         }
+        // Radio: SHOUTcast stations (and a few others) hand out a small .pls/.m3u playlist instead of
+        // the stream itself. Read it just before the station starts so the player gets the real stream.
+        val http = DefaultHttpDataSource.Factory()
+            .setUserAgent("DuoDeck/1.0")
+            .setAllowCrossProtocolRedirects(true) // many stations bounce between http and https
+        val dataSources = ResolvingDataSource.Factory(DefaultDataSource.Factory(this, http)) { spec ->
+            val url = spec.uri.toString()
+            if (spec.uri.scheme?.startsWith("http") == true && StreamResolver.needsResolving(url)) {
+                spec.withUri(Uri.parse(StreamResolver.resolve(url)))
+            } else spec
+        }
         val player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSources))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)

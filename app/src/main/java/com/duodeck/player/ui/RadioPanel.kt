@@ -42,11 +42,12 @@ import com.duodeck.player.data.RadioApi
 import com.duodeck.player.data.RadioNow
 import com.duodeck.player.data.RadioStation
 import com.duodeck.player.data.RadioStore
+import com.duodeck.player.data.ShoutcastApi
 import com.duodeck.player.skin.Slot
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class RadioMode(val label: String) { MINE("MY STATIONS"), POPULAR("POPULAR"), LOCAL("NEAR ME"), GENRES("GENRES"), SEARCH("SEARCH") }
+private enum class RadioMode(val label: String) { MINE("MY STATIONS"), POPULAR("POPULAR"), SHOUTCAST("SHOUTCAST"), LOCAL("NEAR ME"), GENRES("GENRES"), SEARCH("SEARCH") }
 
 private val GENRES = listOf(
     "rock", "classic rock", "pop", "country", "hip hop", "rnb", "jazz", "blues", "classical",
@@ -54,6 +55,9 @@ private val GENRES = listOf(
     "oldies", "soul", "funk", "reggae", "latin", "christian", "gospel", "chillout", "lounge",
     "ambient", "news", "talk", "sports", "comedy", "kids", "soundtrack",
 )
+
+/** In SHOUTCAST mode, this "genre" means the directory's most-listened stations. */
+private const val SC_TOP = "TOP STATIONS"
 
 /** The RADIO tab: find and play free internet radio stations. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -69,17 +73,24 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
     var genre by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var searchFor by rememberSaveable { mutableStateOf("") }
+    // SHOUTCAST mode: a genre picked (or SC_TOP), or a search
+    var scGenre by rememberSaveable { mutableStateOf<String?>(null) }
+    var scQuery by rememberSaveable { mutableStateOf("") }
+    var scSearchFor by rememberSaveable { mutableStateOf("") }
+    // true when the SHOUTcast directory didn't answer and we're showing the free list instead
+    var scFallback by remember { mutableStateOf(false) }
     var retry by remember { mutableIntStateOf(0) }
     var results by remember { mutableStateOf<List<RadioStation>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf<RadioStation?>(null) }
     // a fresh list (scrolled to the top) for each new lookup
-    val listState = remember(mode, genre, searchFor) { androidx.compose.foundation.lazy.LazyListState() }
+    val listState = remember(mode, genre, searchFor, scGenre, scSearchFor) { androidx.compose.foundation.lazy.LazyListState() }
 
     // Fetch from the directory whenever what we're looking at changes.
-    LaunchedEffect(mode, genre, searchFor, retry) {
+    LaunchedEffect(mode, genre, searchFor, scGenre, scSearchFor, retry) {
         error = null
+        scFallback = false
         val job: (suspend () -> List<RadioStation>)? = when (mode) {
             RadioMode.MINE -> null
             RadioMode.POPULAR -> ({ RadioApi.top() })
@@ -89,6 +100,28 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
             }
             RadioMode.GENRES -> genre?.let { g -> { RadioApi.byTag(g) } }
             RadioMode.SEARCH -> searchFor.takeIf { it.isNotBlank() }?.let { q -> { RadioApi.search(q) } }
+            RadioMode.SHOUTCAST -> {
+                val q = scSearchFor
+                val g = scGenre
+                if (q.isBlank() && g == null) null
+                else ({
+                    try {
+                        when {
+                            q.isNotBlank() -> ShoutcastApi.search(q)
+                            g == SC_TOP -> ShoutcastApi.top()
+                            else -> ShoutcastApi.byGenre(g!!)
+                        }
+                    } catch (e: Exception) {
+                        // SHOUTcast's directory is busy or changed: fall back to the free list so the user still gets music.
+                        scFallback = true
+                        when {
+                            q.isNotBlank() -> RadioApi.search(q)
+                            g == SC_TOP -> RadioApi.top()
+                            else -> RadioApi.byTag(g!!.lowercase().substringBefore(" and ").replace("r&b", "rnb"))
+                        }
+                    }
+                })
+            }
         }
         if (job == null) { results = emptyList(); loading = false; return@LaunchedEffect }
         loading = true
@@ -102,6 +135,7 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
     }
 
     val showGenreList = mode == RadioMode.GENRES && genre == null
+    val showScHome = mode == RadioMode.SHOUTCAST && scGenre == null && scSearchFor.isBlank()
     val stations = if (mode == RadioMode.MINE) saved else results
 
     fun playAt(list: List<RadioStation>, i: Int) {
@@ -117,6 +151,7 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
             RadioMode.entries.forEach { m ->
                 TextButtonSkin(m.label, lit = mode == m, size = 7.sp) {
                     if (m == RadioMode.GENRES && mode == RadioMode.GENRES) genre = null
+                    if (m == RadioMode.SHOUTCAST && mode == RadioMode.SHOUTCAST) { scGenre = null; scSearchFor = "" }
                     mode = m
                 }
             }
@@ -127,6 +162,21 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
                 SkinTextField(query, { query = it.take(40) }, "Station name, like \"jazz\" or \"BBC\"", Modifier.weight(1f))
                 Spacer(Modifier.width(4.dp))
                 TextButtonSkin("GO", size = 9.sp) { searchFor = query.trim(); retry++ }
+            }
+            Spacer(Modifier.height(4.dp))
+        } else if (showScHome) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                SkinTextField(scQuery, { scQuery = it.take(40) }, "Search SHOUTcast, like \"blues\" or \"80s\"", Modifier.weight(1f))
+                Spacer(Modifier.width(4.dp))
+                TextButtonSkin("GO", size = 9.sp) { if (scQuery.isNotBlank()) { scSearchFor = scQuery.trim(); retry++ } }
+            }
+            Spacer(Modifier.height(4.dp))
+        } else if (mode == RadioMode.SHOUTCAST) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButtonSkin("< SHOUTCAST", size = 7.sp) { scGenre = null; scSearchFor = "" }
+                Spacer(Modifier.width(6.dp))
+                val title = if (scSearchFor.isNotBlank()) "\"$scSearchFor\"" else scGenre.orEmpty()
+                BodyText(title.uppercase(), bold = true, maxLines = 1, size = 14.sp)
             }
             Spacer(Modifier.height(4.dp))
         } else if (mode == RadioMode.GENRES && genre != null) {
@@ -143,7 +193,7 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
             DisplayBox(Modifier.fillMaxSize(), bg = sc(Slot.LIST_BG)) {
                 val textStyle = TextStyle(fontFamily = skin.listFamily(), fontSize = (13 * skin.listScale()).sp)
                 val msg = when {
-                    showGenreList -> null
+                    showGenreList || showScHome -> null
                     loading -> "TUNING IN...\nLOOKING UP STATIONS"
                     error != null -> error
                     stations.isNotEmpty() -> null
@@ -156,11 +206,12 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
                         Modifier.fillMaxSize().combinedClickable(enabled = error != null, onClick = { retry++ }),
                         contentAlignment = Alignment.Center,
                     ) { Text(msg, color = sc(Slot.LIST_TEXT), style = textStyle, textAlign = TextAlign.Center) }
-                } else if (showGenreList) {
+                } else if (showGenreList || showScHome) {
+                    val names = if (showScHome) listOf(SC_TOP) + ShoutcastApi.GENRES else GENRES
                     LazyColumn(Modifier.fillMaxSize()) {
-                        itemsIndexed(GENRES, key = { _, g -> "g$g" }) { _, g ->
+                        itemsIndexed(names, key = { _, g -> "g$g" }) { _, g ->
                             Row(
-                                Modifier.fillMaxWidth().combinedClickable(onClick = { genre = g }).padding(horizontal = 3.dp, vertical = 4.dp),
+                                Modifier.fillMaxWidth().combinedClickable(onClick = { if (showScHome) scGenre = g else genre = g }).padding(horizontal = 3.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 TransportIcon(Icon.PLAY, sc(Slot.LIST_TEXT).copy(alpha = 0.6f), Modifier.width(6.dp).height(8.dp))
@@ -240,6 +291,7 @@ fun RadioBrowser(state: PlayerUiState, actions: PlayerActions, modifier: Modifie
                     }
                     val bottom = when {
                         playError != null -> playError!!
+                        cur == null && scFallback && mode == RadioMode.SHOUTCAST -> "SHOUTCAST BUSY - SHOWING FREE LIST"
                         cur != null -> song ?: "LIVE"
                         else -> "${stations.size} STATIONS"
                     }

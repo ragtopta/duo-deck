@@ -75,18 +75,39 @@ class MainActivity : ComponentActivity() {
         return fold.value?.state == FoldingFeature.State.HALF_OPENED
     }
 
+    // Gravity: tells "book" pose (held upright, long edge vertical) from laptop pose.
+    // In book pose gravity runs down the long edge (the Y axis) of both screens.
+    // In laptop pose it doesn't: one half is upright sideways and the other lies flat.
+    private var gravitySensor: android.hardware.Sensor? = null
+    private var gx = 0f; private var gy = 0f; private var gz = 0f
+    private var uprightBook = true
+    private val gravityListener = object : android.hardware.SensorEventListener {
+        override fun onSensorChanged(e: android.hardware.SensorEvent) {
+            val a = if (e.sensor.type == android.hardware.Sensor.TYPE_GRAVITY) 1f else 0.15f
+            gx += (e.values[0] - gx) * a; gy += (e.values[1] - gy) * a; gz += (e.values[2] - gz) * a
+            val g = kotlin.math.sqrt(gx * gx + gy * gy + gz * gz)
+            if (g < 1f) return
+            val share = kotlin.math.abs(gy) / g
+            val before = uprightBook
+            if (share > 0.70f) uprightBook = true
+            else if (share < 0.45f) uprightBook = false
+            if (before != uprightBook) updateManualRotation()
+        }
+        override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
+    }
+
     private fun updateManualRotation() {
         val f = fold.value
         val spannedPortrait = f != null && f.isSeparating && f.orientation == FoldingFeature.Orientation.VERTICAL
         @Suppress("DEPRECATION")
         val displayRotation = windowManager.defaultDisplay.rotation
-        if (!spannedPortrait || displayRotation != android.view.Surface.ROTATION_0 || !isFolded()) {
-            // lying flat (or not spanned): always normal side-by-side, no tilting needed
+        val laptopPose = isFolded() && !uprightBook
+        if (!LaptopView.auto.value || !spannedPortrait || displayRotation != android.view.Surface.ROTATION_0 || !laptopPose) {
+            // lying flat, held up like a book, or not spanned: normal side-by-side, no turning
             manualRotation.value = 0
             return
         }
-        // Folded into laptop mode: use the tilt if it's clear, otherwise the side used last time.
-        // The tilt sensor isn't reliable in laptop pose (it could flip the view upside down by itself),
+        // Folded into laptop mode: the tilt sensor can't tell which way up reliably,
         // so we use the saved choice; "Flip laptop view" in the menu changes it.
         manualRotation.value = if (lastLaptopSide == 270) 90 else -90
     }
@@ -146,11 +167,16 @@ class MainActivity : ComponentActivity() {
         }
         if (orientationListener.canDetectOrientation()) orientationListener.enable()
         hingeSensor?.let { sensorManager.registerListener(hingeListener, it, android.hardware.SensorManager.SENSOR_DELAY_UI) }
+        gravitySensor = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY)
+            ?: sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+        gravitySensor?.let { sensorManager.registerListener(gravityListener, it, android.hardware.SensorManager.SENSOR_DELAY_UI) }
+        updateManualRotation()
     }
 
     override fun onPause() {
         orientationListener.disable()
         sensorManager.unregisterListener(hingeListener)
+        sensorManager.unregisterListener(gravityListener)
         super.onPause()
     }
 
@@ -222,6 +248,10 @@ class MainActivity : ComponentActivity() {
                     .collect { updateKeepScreenOn() }
             }
         }
+
+        // "Laptop auto-turn" on/off from the menu
+        LaptopView.init(this)
+        lifecycleScope.launch { LaptopView.auto.collect { updateManualRotation() } }
 
         // "Flip laptop view" from the menu
         lifecycleScope.launch {

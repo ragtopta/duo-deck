@@ -281,6 +281,7 @@ fun PlayerScreen(
         SectionDragOverlay(drag)
 
         // ---- main menu (top-left button on the main panel)
+        val laptopAuto by com.duodeck.player.LaptopView.auto.collectAsState()
         Box(Modifier.padding(top = 20.dp, start = 8.dp)) {
             SkinMenu(
                 expanded = menuOpen,
@@ -295,6 +296,9 @@ fun PlayerScreen(
                     SkinMenuItem("Setup (my layout)") { setupOpen = true },
                     SkinMenuItem("Performance & screen") { perfOpen = true },
                     *(if (LocalManualRotation.current != 0) arrayOf(SkinMenuItem("Flip laptop view (upside down?)") { com.duodeck.player.LaptopView.flip() }) else emptyArray()),
+                    *(if (LocalFold.current?.isSeparating == true) arrayOf(
+                        SkinMenuItem(if (laptopAuto) "Laptop auto-turn: ON" else "Laptop auto-turn: OFF") { com.duodeck.player.LaptopView.setAuto(!laptopAuto) }
+                    ) else emptyArray()),
                     SkinMenuItem("Reset layout") { layout = SectionLayout.DEFAULT; SectionLayout.save(ctx, layout); VisStyles.clearAll() },
                     SkinMenuItem("About Duo-Deck") { aboutOpen = true },
                 ),
